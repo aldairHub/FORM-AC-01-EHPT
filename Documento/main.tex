@@ -1,0 +1,181 @@
+% ============================================================
+% FORM-AC-01 - Analisis de caso: fallo real en un sistema distribuido
+% Caso: GitHub, 21-22 oct. 2018 (clusteres MySQL)
+% Compilar: pdflatex main.tex -> biber main -> pdflatex main.tex (x2)
+% BORRADOR INICIAL: los textos en esta plantilla son un punto de partida con
+% hechos ya verificados contra el informe oficial. Cada integrante debe
+% reescribir su apartado con sus propias palabras y completar lo que esta
+% entre [corchetes]. Declarar el uso de IA al final (honestamente).
+% ============================================================
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-tabla,es-noquoting]{babel}
+\usepackage{mathptmx}                 % Times
+\usepackage[margin=2.54cm]{geometry}
+\usepackage{setspace}\singlespacing
+\usepackage{microtype}
+\usepackage{booktabs,tabularx,array}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{babel}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+\usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
+\addbibresource{referencias.bib}
+
+% Formato: justificado, numero de pagina abajo a la derecha
+\pagestyle{fancy}\fancyhf{}\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[R]{\thepage}
+\titleformat{\section}{\normalfont\bfseries\fontsize{12}{14}\selectfont}{\thesection.}{0.5em}{}
+\titlespacing*{\section}{0pt}{8pt}{3pt}
+\setlist{nosep,leftmargin=1.2em}
+\setlength{\parskip}{2pt}
+\renewcommand{\arraystretch}{1.08}
+
+\newcommand{\todo}[1]{\textcolor{red}{[#1]}}
+
+\begin{document}
+
+% ------------------------- CARATULA -------------------------
+\begin{titlepage}
+\centering
+{\large\bfseries UNIVERSIDAD T\'ECNICA ESTATAL DE QUEVEDO}\\[4pt]
+Facultad de Ciencias de la Computaci\'on\\
+Carrera de Software\\[2cm]
+{\Large\bfseries An\'alisis de caso: fallo real en un sistema distribuido}\\[6pt]
+{\large FORM-AC-01 --- Incidente de GitHub, 21--22 de octubre de 2018}\\[2cm]
+\begin{tabular}{@{}ll@{}}
+Asignatura: & Aplicaciones Distribuidas (ISR-701)\\
+Docente: & Gleiston C. Guerrero-Ulloa, PhD\\
+Caso asignado: & GitHub (2018), clusteres MySQL\\
+Equipo: & \todo{nombre del equipo}\\
+Integrantes: & \todo{Integrante 1}\\ & \todo{Integrante 2}\\ & \todo{Integrante 3}\\ & \todo{Integrante 4}\\
+Paralelo: & \todo{paralelo}\\
+Fecha: & \todo{fecha de la versi\'on}\\
+Repositorio: & \small\texttt{\todo{URL completa del repositorio}}\\
+\end{tabular}
+\end{titlepage}
+
+% ------------------------- CONTENIDO (max. 2 paginas) -------------------------
+\section{Descripci\'on del incidente}
+El 21 de octubre de 2018, GitHub sufri\'o 24~h 11~min de servicio degradado en sus cl\'usteres MySQL, que guardan los metadatos (pull requests, issues, autenticaci\'on) \cite{github2018}. Una tarea de mantenimiento para reemplazar \'optica de 100G cort\'o durante \textbf{43~s} la conexi\'on entre el hub de red de la costa este de EE.\,UU. y su centro de datos primario; esa breve p\'erdida dej\'o escrituras sin replicar y desencaden\'o la ca\'ida prolongada \cite{github2018}. Todas las horas est\'an en \textbf{UTC} tal como las publica el informe (Ecuador = UTC$-$5, sin conversi\'on de PST/PDT).
+
+\begingroup\small
+\begin{tabularx}{\linewidth}{@{}l l X@{}}
+\toprule
+\textbf{Fecha} & \textbf{UTC} & \textbf{Evento} \cite{github2018}\\
+\midrule
+21-oct & 22:52 & Mantenimiento corta 43~s la conexi\'on; Orchestrator promueve primarios en la costa oeste.\\
+21-oct & 22:54 & Alertas internas; a las 23:02 se ve una topolog\'ia solo con servidores de la costa oeste.\\
+21-oct & 23:07--23:13 & Se bloquea el despliegue, estado amarillo (23:09) y rojo (23:13).\\
+21-oct & 23:19 & Se pausan webhooks y GitHub Pages para proteger los datos recibidos.\\
+22-oct & 00:05 & Plan: restaurar desde respaldos, sincronizar r\'eplicas y volver a la topolog\'ia estable.\\
+22-oct & 06:51 & Primeros cl\'usteres restaurados en el este; estimaci\'on publicada: 2~h.\\
+22-oct & 11:12 & Todos los primarios vuelven a la costa este; r\'eplicas con horas de retraso.\\
+22-oct & 13:15 & Pico de tr\'afico; se agregan r\'eplicas de lectura y la replicaci\'on empieza a alcanzar.\\
+22-oct & 16:24 & Failover a la topolog\'ia original; el estado sigue rojo mientras se procesa la cola.\\
+22-oct & 16:45 & Cola: m\'as de 5 millones de eventos de webhooks y 80\,000 builds de Pages.\\
+22-oct & 23:03 & Todo procesado y verificado; estado verde.\\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+\section{Causas ra\'iz}
+\begin{figure}[h]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[font=\scriptsize, x=1cm, y=1cm,
+  cause/.style={anchor=east, text width=3.45cm, align=right, inner sep=1pt},
+  cat/.style={draw, fill=gray!15, font=\footnotesize\bfseries, inner sep=2pt},
+  bone/.style={thick}]
+  \newcommand{\cz}[4]{\node[cause,#3] at ({#1-0.2727*abs(#2)-0.12},#2) {#4};}
+  % Espina central y efecto
+  \draw[very thick,->] (3.3,0) -- (12.4,0);
+  \node[draw, very thick, anchor=west, text width=3.2cm, align=center, font=\footnotesize\bfseries, inner sep=3pt] at (12.4,0)
+    {24\,h\,11\,min de degradaci\'on y datos inconsistentes};
+  % Detonante
+  \node[draw=orange!80!black, fill=orange!20, very thick, anchor=east, text width=3.0cm, align=center, font=\footnotesize\bfseries, inner sep=2pt] at (3.2,0)
+    {DETONANTE: mantenimiento de \'optica 100G $\to$ corte de 43\,s};
+  % Tecnologia (arriba izquierda)
+  \draw[bone] (3.5,4.4) -- (4.7,0); \node[cat] at (3.5,4.7) {Tecnolog\'ia};
+  \cz{4.7}{1.7}{text=red!70!black,font=\scriptsize\bfseries}{CAUSA RA\'IZ: Orchestrator promueve primarios entre regiones; las apps no toleran esa latencia}
+  \cz{4.7}{3.0}{}{Replicaci\'on as\'incrona: escrituras sin replicar en cada sitio}
+  \cz{4.7}{3.9}{}{R\'eplicas de lectura con horas de retraso}
+  % Procesos (arriba derecha)
+  \draw[bone] (8.5,4.4) -- (9.7,0); \node[cat] at (8.5,4.7) {Procesos};
+  \cz{9.7}{1.7}{}{Nunca se reconstruy\'o un cl\'uster completo desde respaldo; restauraci\'on remota lenta}
+  \cz{9.7}{3.0}{}{Cola de reintentos: unos 200\,000 webhooks expiraron por TTL}
+  \cz{9.7}{3.9}{}{Supuestos no probados (sin pruebas de fallo)}
+  % Personas y comunicacion (abajo izquierda)
+  \draw[bone] (3.5,-4.4) -- (4.7,0); \node[cat] at (3.5,-4.7) {Personas y comunicaci\'on};
+  \cz{4.7}{-1.4}{}{Estados solo verde/amarillo/rojo, sin detalle por componente}
+  \cz{4.7}{-2.6}{}{Estimaci\'on lineal de recuperaci\'on, err\'onea}
+  \cz{4.7}{-3.7}{}{Comunicado tard\'io (blog a las 07:46 UTC)}
+  % Entorno (abajo derecha)
+  \draw[bone] (8.5,-4.4) -- (9.7,0); \node[cat] at (8.5,-4.7) {Entorno};
+  \cz{9.7}{-1.4}{}{Sin arquitectura activo/activo/activo (N+1 por sitio)}
+  \cz{9.7}{-2.6}{}{Partici\'on interna de esa magnitud nunca vista}
+  \cz{9.7}{-3.7}{}{Pico de tr\'afico al iniciar la jornada}
+\end{tikzpicture}}
+\caption{Diagrama de Ishikawa del incidente (elaboraci\'on propia a partir de \cite{github2018}).}
+\end{figure}
+\vspace{-6pt}
+\textbf{Prueba de la causa ra\'iz.} Si Orchestrator no hubiera podido promover primarios entre regiones, el corte de 43~s no habr\'ia dejado a las aplicaciones escribiendo a trav\'es del pa\'is durante unos 40 minutos \cite{github2018}. El informe dice que Orchestrator actu\'o ``como estaba configurado''; la mala alineaci\'on fue de configuraci\'on frente a las expectativas de la aplicaci\'on. \todo{Argumentar con sus palabras; contrastar con la clasificaci\'on de causas de \cite{ghosh2022}}.
+
+\section{Impacto cuantificado}
+\begin{itemize}
+\item \textbf{Duraci\'on:} 24~h 11~min de degradaci\'on; la conectividad se restableci\'o en 43~s \cite{github2018}.
+\item \textbf{Alcance:} varios cl\'usteres MySQL (de cientos de GB a casi 5~TB); sin webhooks ni builds de Pages durante la mayor parte del incidente; datos desactualizados e inconsistentes \cite{github2018}.
+\item \textbf{Temporal vs.\ definitivo:} no se perdieron datos de usuario, pero quedaron escrituras por conciliar (ej.: 954 escrituras en uno de los cl\'usteres m\'as activos) y unos 200\,000 webhooks se descartaron por TTL \cite{github2018}.
+\item \textbf{Disponibilidad (octubre 2018, 31 d = 44\,640 min):} $A=\frac{44\,640-1\,451}{44\,640}\times100\%\approx 96{,}75\%$, tomando todo el periodo degradado como ca\'ido (cota inferior; fue degradaci\'on parcial).
+\item \textbf{No reportado:} el informe oficial no da p\'erdidas econ\'omicas ni el SLA comprometido, as\'i que no se afirma incumplimiento de SLA.
+\end{itemize}
+
+\section{Relaci\'on con la Unidad 1}
+\textbf{Transparencia rota (principal: replicaci\'on).} Los usuarios vieron datos desactualizados e inconsistentes porque cada petici\'on pod\'ia caer en una r\'eplica con horas de retraso \cite{github2018}. Tambi\'en se rompi\'o la \emph{transparencia de fallos} (hubo intervenci\'on manual y estado rojo) y, en parte, la de \emph{ubicaci\'on} (las apps del este sufrieron latencia al escribir en el oeste).
+
+\textbf{CAP.} S\'i hubo una partici\'on real: el informe habla de una partici\'on de red y de un qu\'orum de Orchestrator en el oeste y la nube. Durante la partici\'on se mantuvo disponibilidad (failover y escrituras en el oeste) con replicaci\'on as\'incrona, lo que dej\'o escrituras divergentes (consistencia perdida). Una vez sanada, GitHub eligi\'o consistencia: ``priorizar la integridad de los datos sobre la usabilidad'' y pausar webhooks y Pages, sacrificando disponibilidad por m\'as de un d\'ia \cite{github2018,gilbert2002}. \todo{Confirmar la redacci\'on con el texto del informe y el Anexo C.2}
+
+\textbf{Tolerancia a fallos.} El mecanismo que no funcion\'o como se esperaba fue el \emph{failover autom\'atico} de Orchestrator: se activ\'o correctamente, pero produjo una topolog\'ia que la capa de aplicaci\'on no soportaba \cite{github2018}. Modelo de fallo: \emph{por omisi\'on} (mensajes perdidos 43~s) que deriv\'o en fallos \emph{de temporizaci\'on} (latencia entre costas, r\'eplicas retrasadas) y \emph{de respuesta} (datos obsoletos) \cite{avizienis2004}. \todo{Evaluar si el retraso creciente de r\'eplicas con tr\'afico pico es un fallo metaestable \cite{huang2022}}
+
+\section{Mitigaci\'on aplicada por la empresa}
+\textbf{Inmediatas} \cite{github2018}: bloquear el despliegue; estado rojo; pausar webhooks y Pages; restaurar desde respaldos y luego directo desde la costa oeste; aprovisionar r\'eplicas de lectura extra; subir el TTL de los webhooks.\\
+\textbf{Permanentes} \cite{github2018} (con la causa del diagrama que atacan): (1) impedir que Orchestrator promueva primarios entre regiones $\to$ causa ra\'iz; (2) nuevo estado por componente $\to$ comunicaci\'on; (3) arquitectura activo/activo/activo $\to$ entorno; (4) probar supuestos y practicar ingenier\'ia del caos $\to$ procesos.
+
+\section{Lecciones aprendidas para el proyecto propio}
+\begingroup\scriptsize
+\begin{tabularx}{\linewidth}{@{}p{0.4cm}p{1.9cm}XXXX@{}}
+\toprule
+N. & Componente del PFC & Escenario de fallo & Relaci\'on con el caso & Medida en TA-PFC-E1 & C\'omo se verificar\'a\\
+\midrule
+1 & \todo{} & \todo{} & \todo{} & \todo{} & \todo{}\\
+2 & \todo{} & \todo{} & \todo{} & \todo{} & \todo{}\\
+3 & \todo{} & \todo{} & \todo{} & \todo{} & \todo{}\\
+\bottomrule
+\end{tabularx}
+\endgroup
+
+\clearpage
+% ------------------------- NO CUENTAN PARA LAS 2 PAGINAS -------------------------
+\section*{Retroalimentaci\'on incorporada}
+\small
+\begin{tabularx}{\linewidth}{@{}p{0.6cm}p{2.2cm}XX@{}}
+\toprule
+N. & Origen & Observaci\'on recibida & Cambio realizado o raz\'on para no aplicarlo \\
+\midrule
+1 & \todo{Origen real} & \todo{observaci\'on textual} & \todo{cambio y secci\'on donde se ve} \\
+\bottomrule
+\end{tabularx}
+
+\section*{Declaraci\'on de uso de inteligencia artificial}
+\small
+\todo{Escribir lo que realmente se hizo. Modelo: ``Se us\'o Claude (Anthropic) para [armar la plantilla LaTeX, localizar el informe oficial y proponer fuentes]. Los integrantes verificaron cada referencia con el procedimiento del Anexo G, contrastaron los hechos con el informe oficial y reescribieron/elaboraron [apartados / diagrama]. El diagrama de causas fue elaborado por el equipo.'' Si no se us\'o IA para algo, no lo declaren.}
+
+\printbibliography[title={Referencias}]
+
+\end{document}

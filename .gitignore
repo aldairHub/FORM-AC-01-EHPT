@@ -1,0 +1,14 @@
+# Archivos auxiliares de compilación LaTeX (se conserva el PDF)
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.log
+*.out
+*.run.xml
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.toc
+*.lof
+*.lot
