@@ -137,11 +137,11 @@ El 21 de octubre de 2018, GitHub sufri\'o 24~h 11~min de servicio degradado en s
 \end{itemize}
 
 \section{Relaci\'on con la Unidad 1}
-\textbf{Transparencia rota (principal: replicaci\'on).} Los usuarios vieron datos desactualizados e inconsistentes porque cada petici\'on pod\'ia caer en una r\'eplica con horas de retraso \cite{github2018}. Tambi\'en se rompi\'o la \emph{transparencia de fallos} (hubo intervenci\'on manual y estado rojo) y, en parte, la de \emph{ubicaci\'on} (las apps del este sufrieron latencia al escribir en el oeste).
+\textbf{Transparencia de replicaci\'on y de fallos.} La primera oculta la existencia de varias copias; la segunda, el fallo y la recuperaci\'on de recursos \cite{vansteen2023}. La replicaci\'on qued\'o expuesta cuando los usuarios recibieron datos inconsistentes de r\'eplicas con horas de retraso (22-oct., 11:12 UTC). La de fallos tambi\'en se rompi\'o: los usuarios no pudieron recibir webhooks ni publicar sitios de Pages durante gran parte del incidente \cite{github2018}.
 
-\textbf{CAP.} S\'i hubo una partici\'on real: el informe habla de una partici\'on de red y de un qu\'orum de Orchestrator en el oeste y la nube. Durante la partici\'on se mantuvo disponibilidad (failover y escrituras en el oeste) con replicaci\'on as\'incrona, lo que dej\'o escrituras divergentes (consistencia perdida). Una vez sanada, GitHub eligi\'o consistencia: ``priorizar la integridad de los datos sobre la usabilidad'' y pausar webhooks y Pages, sacrificando disponibilidad por m\'as de un d\'ia \cite{github2018,gilbert2002}. \todo{Confirmar la redacci\'on con el texto del informe y el Anexo C.2}
+\textbf{CAP: partici\'on real y disponibilidad sacrificada.} El corte de 43~s aisl\'o el centro de datos primario del este de su hub de red; los nodos de Orchestrator del oeste y de la nube formaron qu\'orum y promovieron primarios en el oeste \cite{github2018}. Ante una partici\'on, CAP impide garantizar simult\'aneamente consistencia fuerte (C) y disponibilidad de todas las operaciones (A) \cite{gilbert2002}. El informe documenta escrituras no compartidas entre ambos centros, pero sit\'ua la redirecci\'on de las aplicaciones al oeste \emph{despu\'es} de restablecer la conexi\'on: esto no demuestra que se garantizara A durante el corte. La decisi\'on expl\'icita fue sacrificar disponibilidad para proteger los datos: a las 23:19 UTC se pausaron webhooks y Pages \cite{github2018}. Interpretamos esta medida como una prioridad de consistencia e integridad durante la recuperaci\'on, sin afirmar que todas las lecturas fueran consistentes. CAP tampoco exige que la recuperaci\'on dure 24 horas: la elecci\'on depende de la operaci\'on y debe distinguirse de la recuperaci\'on posterior \cite{brewer2012}.
 
-\textbf{Tolerancia a fallos.} El mecanismo que no funcion\'o como se esperaba fue el \emph{failover autom\'atico} de Orchestrator: se activ\'o correctamente, pero produjo una topolog\'ia que la capa de aplicaci\'on no soportaba \cite{github2018}. Modelo de fallo: \emph{por omisi\'on} (mensajes perdidos 43~s) que deriv\'o en fallos \emph{de temporizaci\'on} (latencia entre costas, r\'eplicas retrasadas) y \emph{de respuesta} (datos obsoletos) \cite{avizienis2004}. \todo{Evaluar si el retraso creciente de r\'eplicas con tr\'afico pico es un fallo metaestable \cite{huang2022}}
+\textbf{Tolerancia a fallos y modelo de fallo.} El \emph{failover autom\'atico} con r\'eplicas no mantuvo el servicio esperado: Orchestrator actu\'o seg\'un su configuraci\'on, pero las aplicaciones del este no toleraban la latencia de escribir en el oeste. El consenso de Orchestrator no garantizaba la sincronizaci\'on de las bases MySQL \cite{github2018}. Clasificamos el detonante como \emph{omisi\'on de comunicaci\'on} (interrupci\'on del intercambio entre sitios); sus efectos incluyeron fallos de \emph{temporizaci\'on} (latencia excesiva) y de \emph{respuesta} (valores obsoletos) \cite{vansteen2023}.
 
 \section{Mitigaci\'on aplicada por la empresa}
 \textbf{Inmediatas} \cite{github2018}: bloquear el despliegue; estado rojo; pausar webhooks y Pages; restaurar desde respaldos y luego directo desde la costa oeste; aprovisionar r\'eplicas de lectura extra; subir el TTL de los webhooks.\\
@@ -162,19 +162,9 @@ N. & Componente del PFC & Escenario de fallo & Relaci\'on con el caso & Medida e
 
 \clearpage
 % ------------------------- NO CUENTAN PARA LAS 2 PAGINAS -------------------------
-\section*{Retroalimentaci\'on incorporada}
-\small
-\begin{tabularx}{\linewidth}{@{}p{0.6cm}p{2.2cm}XX@{}}
-\toprule
-N. & Origen & Observaci\'on recibida & Cambio realizado o raz\'on para no aplicarlo \\
-\midrule
-1 & \todo{Origen real} & \todo{observaci\'on textual} & \todo{cambio y secci\'on donde se ve} \\
-\bottomrule
-\end{tabularx}
-
 \section*{Declaraci\'on de uso de inteligencia artificial}
 \small
-\todo{Escribir lo que realmente se hizo. Modelo: ``Se us\'o Claude (Anthropic) para [armar la plantilla LaTeX, localizar el informe oficial y proponer fuentes]. Los integrantes verificaron cada referencia con el procedimiento del Anexo G, contrastaron los hechos con el informe oficial y reescribieron/elaboraron [apartados / diagrama]. El diagrama de causas fue elaborado por el equipo.'' Si no se us\'o IA para algo, no lo declaren.}
+Se us\'o Claude (Anthropic) para armar la plantilla LaTeX y proponer fuentes.
 
 \printbibliography[title={Referencias}]
 
