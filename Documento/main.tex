@@ -158,8 +158,22 @@ A partir de la cronolog\'ia y del an\'alisis del incidente, el impacto se cuanti
 \textbf{Tolerancia a fallos y modelo de fallo.} El \emph{failover autom\'atico} con r\'eplicas no mantuvo el servicio esperado: Orchestrator actu\'o seg\'un su configuraci\'on, pero las aplicaciones del este no toleraban la latencia de escribir en el oeste. El consenso de Orchestrator no garantizaba la sincronizaci\'on de las bases MySQL \cite{github2018}. Clasificamos el detonante como \emph{omisi\'on de comunicaci\'on} (interrupci\'on del intercambio entre sitios); sus efectos incluyeron fallos de \emph{temporizaci\'on} (latencia excesiva) y de \emph{respuesta} (valores obsoletos) \cite{vansteen2023}.
 
 \section{Mitigaci\'on aplicada por la empresa}
-\textbf{Inmediatas} \cite{github2018}: bloquear el despliegue; estado rojo; pausar webhooks y Pages; restaurar desde respaldos y luego directo desde la costa oeste; aprovisionar r\'eplicas de lectura extra; subir el TTL de los webhooks.\\
-\textbf{Permanentes} \cite{github2018} (con la causa del diagrama que atacan): (1) impedir que Orchestrator promueva primarios entre regiones $\to$ causa ra\'iz; (2) nuevo estado por componente $\to$ comunicaci\'on; (3) arquitectura activo/activo/activo $\to$ entorno; (4) probar supuestos y practicar ingenier\'ia del caos $\to$ procesos.
+\textbf{Medidas inmediatas.}
+\begin{itemize}
+    \item GitHub bloque\'o despliegues para evitar cambios adicionales y paus\'o \textit{webhooks} y compilaciones de Pages para proteger los datos recibidos \cite{github2018}.
+    \item Restaur\'o respaldos y aprovech\'o transferencias directas desde la costa oeste para superar limitaciones de descarga. Sincroniz\'o r\'eplicas y recuper\'o la topolog\'ia original para resolver problemas de latencia y disponibilidad \cite{github2018}.
+    \item A\~nadi\'o r\'eplicas de lectura para distribuir la carga y permitir que la replicaci\'on se actualizara. Durante el procesamiento pendiente aument\'o temporalmente el tiempo de vida (TTL) de los \textit{webhooks} para evitar m\'as descartes por vencimiento \cite{github2018}.
+\end{itemize}
+
+\textbf{Medidas permanentes.} El informe anunci\'o estas mejoras sin confirmar su finalizaci\'on:
+\begin{itemize}
+    \item Restringir las promociones de Orchestrator entre regiones para evitar una latencia incompatible con las aplicaciones \cite{github2018}.
+    \item Acelerar un estado por componente para comunicar con claridad qu\'e servicios estaban afectados \cite{github2018}.
+    \item Dar prioridad al proyecto activo/activo/activo para tolerar el fallo completo de un centro de datos sin afectar a usuarios \cite{github2018}.
+    \item Validar supuestos y escenarios mediante inyecci\'on de fallos e ingenier\'ia del caos para detectar riesgos antes de afectar al servicio \cite{github2018}.
+\end{itemize}
+
+\textbf{Importancia.} Las medidas inmediatas permitieron recuperar el servicio sin dejar de priorizar la integridad de los datos. Las mejoras anunciadas buscaban reducir el riesgo de nuevos incidentes y comunicar mejor sus efectos. Este caso muestra que la recuperaci\'on requiere tanto acciones de respuesta como una automatizaci\'on compatible con las aplicaciones y pruebas de posibles fallos \cite{github2018}.
 
 \section{Lecciones aprendidas para el proyecto propio}
 \begingroup\scriptsize
