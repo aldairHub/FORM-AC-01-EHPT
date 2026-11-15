@@ -188,6 +188,11 @@ N. & Componente del PFC & Escenario de fallo & Relaci\'on con el caso & Medida e
 & En GitHub, las réplicas atrasadas mostraban información desactualizada \cite{github2018}; en el PFC, una consulta antigua podría mostrar un asiento ya reservado.
 & Definir una validación transaccional al confirmar y una restricción de unicidad por viaje y asiento, para impedir reservas duplicadas.
 & Prueba prevista: enviar dos reservas simultáneas para el mismo viaje y asiento; solo una debe confirmarse y la otra debe informar que ya no está disponible.\\
+4 & Notificaciones del proceso del sistema de contrataci\'on de docentes no titulares
+& Ante una falla o alta carga del servicio de env\'io, las notificaciones de cambio de estado del proceso (postulaci\'on recibida, citaci\'on, resultado o contrataci\'on) se retrasan, se acumulan en cola o se pierden.
+& En GitHub se acumul\'o una cola de eventos y $\sim$200\,000 \textit{webhooks} se descartaron por TTL \cite{github2018}; an\'alogamente, el PFC podr\'ia retrasar o perder notificaciones sin una gesti\'on adecuada.
+& Incorporar en TA-PFC-E1 una cola persistente de notificaciones con reintentos, registro del estado de env\'io (pendiente, enviado, fallido) y una pol\'itica de TTL/reprocesamiento para evitar p\'erdidas silenciosas.
+& Prueba prevista: simular la indisponibilidad del servicio de env\'io y generar notificaciones; verificar que se almacenen en cola, se reintenten al restablecer el servicio y que los eventos no entregados tras el TTL queden registrados.\\
 \bottomrule
 \end{tabularx}
 \endgroup
