@@ -182,7 +182,7 @@ A partir de la cronolog\'ia y del an\'alisis del incidente, el impacto se cuanti
 N. & Componente del PFC & Escenario de fallo & Relaci\'on con el caso & Medida en TA-PFC-E1 & C\'omo se verificar\'a\\
 \midrule
 1 & Registro de solicitudes del SGRA & Corte entre backend y PostgreSQL; el reintento duplica una solicitud. & Como en GitHub, una falla de red dificulta recuperar escrituras. & Definir transacciones e identificadores únicos para evitar duplicados al reintentar. & Prueba prevista: cortar la conexión y reenviar; debe persistir una sola solicitud.\\
-2 & \todo{} & \todo{} & \todo{} & \todo{} & \todo{}\\
+2 & Reservas y registros del SGL & Un fallo de la base de datos interrumpe el servicio y deja informaci\'on sin guardar. & GitHub recurri\'o a respaldos y prioriz\'o la integridad de los datos durante la recuperaci\'on \cite{github2018}. & Se propone realizar copias de seguridad y definir un procedimiento de restauraci\'on para recuperar el servicio y proteger los registros guardados. & Prueba propuesta: simular un fallo en un entorno de pruebas, restaurar una copia y comprobar los registros recuperados y el funcionamiento del sistema.\\
 3 & \todo{} & \todo{} & \todo{} & \todo{} & \todo{}\\
 \bottomrule
 \end{tabularx}
