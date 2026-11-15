@@ -104,47 +104,36 @@ El 21 y 22 de octubre de 2018, GitHub experiment\'o una degradaci\'on del servic
 
 \newpage
 
-\section{Causas ra\'iz}
-\begin{figure}[h]
-\centering
-\resizebox{\linewidth}{!}{%
-\begin{tikzpicture}[font=\scriptsize, x=1cm, y=1cm,
-  cause/.style={anchor=east, text width=3.45cm, align=right, inner sep=1pt},
-  cat/.style={draw, fill=gray!15, font=\footnotesize\bfseries, inner sep=2pt},
-  bone/.style={thick}]
-  \newcommand{\cz}[4]{\node[cause,#3] at ({#1-0.2727*abs(#2)-0.12},#2) {#4};}
-  % Espina central y efecto
-  \draw[very thick,->] (3.3,0) -- (12.4,0);
-  \node[draw, very thick, anchor=west, text width=3.2cm, align=center, font=\footnotesize\bfseries, inner sep=3pt] at (12.4,0)
-    {24\,h\,11\,min de degradaci\'on y datos inconsistentes};
-  % Detonante
-  \node[draw=orange!80!black, fill=orange!20, very thick, anchor=east, text width=3.0cm, align=center, font=\footnotesize\bfseries, inner sep=2pt] at (3.2,0)
-    {DETONANTE: mantenimiento de \'optica 100G $\to$ corte de 43\,s};
-  % Tecnologia (arriba izquierda)
-  \draw[bone] (3.5,4.4) -- (4.7,0); \node[cat] at (3.5,4.7) {Tecnolog\'ia};
-  \cz{4.7}{1.7}{text=red!70!black,font=\scriptsize\bfseries}{CAUSA RA\'IZ: Orchestrator promueve primarios entre regiones; las apps no toleran esa latencia}
-  \cz{4.7}{3.0}{}{Replicaci\'on as\'incrona: escrituras sin replicar en cada sitio}
-  \cz{4.7}{3.9}{}{R\'eplicas de lectura con horas de retraso}
-  % Procesos (arriba derecha)
-  \draw[bone] (8.5,4.4) -- (9.7,0); \node[cat] at (8.5,4.7) {Procesos};
-  \cz{9.7}{1.7}{}{Nunca se reconstruy\'o un cl\'uster completo desde respaldo; restauraci\'on remota lenta}
-  \cz{9.7}{3.0}{}{Cola de reintentos: unos 200\,000 webhooks expiraron por TTL}
-  \cz{9.7}{3.9}{}{Supuestos no probados (sin pruebas de fallo)}
-  % Personas y comunicacion (abajo izquierda)
-  \draw[bone] (3.5,-4.4) -- (4.7,0); \node[cat] at (3.5,-4.7) {Personas y comunicaci\'on};
-  \cz{4.7}{-1.4}{}{Estados solo verde/amarillo/rojo, sin detalle por componente}
-  \cz{4.7}{-2.6}{}{Estimaci\'on lineal de recuperaci\'on, err\'onea}
-  \cz{4.7}{-3.7}{}{Comunicado tard\'io (blog a las 07:46 UTC)}
-  % Entorno (abajo derecha)
-  \draw[bone] (8.5,-4.4) -- (9.7,0); \node[cat] at (8.5,-4.7) {Entorno};
-  \cz{9.7}{-1.4}{}{Sin arquitectura activo/activo/activo (N+1 por sitio)}
-  \cz{9.7}{-2.6}{}{Partici\'on interna de esa magnitud nunca vista}
-  \cz{9.7}{-3.7}{}{Pico de tr\'afico al iniciar la jornada}
-\end{tikzpicture}}
-\caption{Diagrama de Ishikawa del incidente (elaboraci\'on propia a partir de \cite{github2018}).}
+\section{Causas raíz}
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{Diagrama ishikawa Github.drawio.png}
+    \caption{Diagrama de Ishikawa del incidente de GitHub
+    de octubre de 2018, basado en el informe oficial
+    \cite{github2018}.}
+    \label{fig:ishikawa-github}
 \end{figure}
-\vspace{-6pt}
-\textbf{Prueba de la causa ra\'iz.} Si Orchestrator no hubiera podido promover primarios entre regiones, el corte de 43~s no habr\'ia dejado a las aplicaciones escribiendo a trav\'es del pa\'is durante unos 40 minutos \cite{github2018}. El informe dice que Orchestrator actu\'o ``como estaba configurado''; la mala alineaci\'on fue de configuraci\'on frente a las expectativas de la aplicaci\'on. \todo{Argumentar con sus palabras; contrastar con la clasificaci\'on de causas de \cite{ghosh2022}}.
+
+\noindent
+\textbf{Interpretación de las causas.}
+La interrupción de conectividad durante el mantenimiento
+fue el desencadenante. El incidente se agravó porque
+la configuración de Orchestrator permitía promover
+servidores principales entre regiones, mientras que
+la aplicación no soportaba adecuadamente la latencia
+resultante. Además, las escrituras divergentes entre
+ambas regiones impedían regresar inmediatamente
+a la topología anterior sin comprometer la integridad
+de los datos \cite{github2018}.
+
+Como interpretación del equipo, la incompatibilidad
+entre la configuración de conmutación y los requisitos
+de la aplicación se relaciona con la categoría de
+errores de configuración descrita por Ghosh et al.
+Estos autores identifican configuraciones inadecuadas
+que degradan el servicio o afectan a componentes
+dependientes \cite{ghosh2022}.
 
 \section{Impacto cuantificado}
 A partir de la cronolog\'ia y del an\'alisis del incidente, el impacto se cuantifica en cinco dimensiones: servicios afectados, trabajo acumulado durante la recuperaci\'on, integridad de los datos, eventos no entregados e impacto econ\'omico y de nivel de servicio. Las cifras provienen del informe post-mortem oficial de GitHub \cite{github2018}; los tiempos transcurridos se calculan desde el inicio del incidente (21 de octubre de 2018, 22:52~UTC).
